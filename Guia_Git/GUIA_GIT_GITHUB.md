@@ -654,9 +654,9 @@ git checkout main
 ## 13. Checklist
 
 ### Setup (uma vez)
-- [ ] `git config --global user.name/email` em ambas as máquinas.
+- [x] `git config --global user.name/email` em ambas as máquinas.
 - [ ] Repo criado no GitHub (private).
-- [ ] `.gitignore` com artefatos Python.
+- [x] `.gitignore` com artefatos Python.
 - [ ] Parceira adicionada como colaboradora.
 - [ ] Repo clonado na máquina da parceira.
 - [ ] `.github/workflows/ci.yml` criado e enviado.
