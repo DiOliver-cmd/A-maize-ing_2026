@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 88
+excludes =
+	.git,
+	__pycache__,
+	build,
+	dist,
+	venv,
+	.venv,
+	.mypy_cache,
+	.pytest_cache
