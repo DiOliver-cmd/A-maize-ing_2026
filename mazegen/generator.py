@@ -1,5 +1,6 @@
 """Module for maze structure definition and generation logic."""
 
+import random
 from enum import IntFlag
 from typing import Optional
 from mazegen.config import MazeConfig
@@ -125,3 +126,34 @@ class MazeGenerator:
         # Clear wall bit in both cells
         self.grid[y1][x1] &= ~direction_a_to_b.value
         self.grid[y2][x2] &= ~direction_b_to_a.value
+
+    def get_unvisited_neighbors(
+        self, x: int, y: int, visited: set[tuple[int, int]]
+    ) -> list[tuple[int, int]]:
+
+        neighbors: list[tuple[int, int]] = []
+        for direction, (dx, dy) in MOVE_OFFSETS.items():
+            nx, ny = x + dx, y + dy
+            if self.is_valid_cell(nx, ny) and (nx, ny) not in visited:
+                neighbors.append((nx, ny))
+        return neighbors
+
+    def generate_backtracker(self) -> None:
+        """Gera um labirinto perfeito usando o algoritmo Recursive Backtracker."""
+
+        rng = random.Random(self.config.seed)
+        start_cell = self.config.entry
+        visited: set[tuple[int, int]] = {start_cell}
+        stack: list[tuple[int, int]] = [start_cell]
+
+        while stack:
+            curr_x, curr_y = stack[-1]
+            neighbors = self.get_unvisited_neighbors(curr_x, curr_y, visited)
+
+            if neighbors:
+                next_cell = rng.choice(neighbors)
+                self.remove_wall((curr_x, curr_y), next_cell)
+                visited.add(next_cell)
+                stack.append(next_cell)
+            else:
+                stack.pop()
