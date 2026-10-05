@@ -33,4 +33,4 @@ jobs:
                  --check-untyped-defs
 
       - name: pytest 
-        run: pytest -q --suppress-tests-failed-exit-code
+        run: pytest -v
