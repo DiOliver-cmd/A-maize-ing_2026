@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import pytest
-from mazegen.config import MazeConfig, parse_config
+from mazegen.config import MazeConfig, parse_config, validate_config
 
 
 def test_maze_config_instantiation() -> None:
@@ -48,9 +48,6 @@ def test_parse_config_valid_file(tmp_path: Path) -> None:
     assert config.perfect is True
     assert config.seed == 42
 
-@pytest.mark.xfail(reason="Aguardando implementação da T1.2 pela dupla")
-def test_parse_config_invalid_dimensions(tmp_path: Path) -> None:
-    ...
 
 def test_parse_config_invalid_dimensions(tmp_path: Path) -> None:
     """Test that invalid dimensions raise ValueError."""
@@ -67,4 +64,37 @@ def test_parse_config_invalid_dimensions(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         parse_config(str(config_file))
-        
+
+
+def test_validate_config_accepts_valid_config() -> None:
+    """A valid configuration must pass without raising."""
+    config = MazeConfig(10, 10, (0, 0), (9, 9), "out.txt", True)
+    validate_config(config)
+
+
+def test_validate_config_rejects_entry_out_of_bounds() -> None:
+    """Entry coordinates outside the grid must be rejected."""
+    config = MazeConfig(10, 10, (10, 0), (9, 9), "out.txt", True)
+    with pytest.raises(ValueError, match="ENTRY"):
+        validate_config(config)
+
+
+def test_validate_config_rejects_exit_out_of_bounds() -> None:
+    """Exit coordinates outside the grid must be rejected."""
+    config = MazeConfig(10, 10, (0, 0), (0, -1), "out.txt", True)
+    with pytest.raises(ValueError, match="EXIT"):
+        validate_config(config)
+
+
+def test_validate_config_rejects_same_entry_and_exit() -> None:
+    """Entry and exit must not be the same cell."""
+    config = MazeConfig(10, 10, (3, 3), (3, 3), "out.txt", True)
+    with pytest.raises(ValueError, match="different cells"):
+        validate_config(config)
+
+
+def test_validate_config_rejects_empty_output_file() -> None:
+    """An empty OUTPUT_FILE must be rejected."""
+    config = MazeConfig(10, 10, (0, 0), (9, 9), "", True)
+    with pytest.raises(ValueError, match="OUTPUT_FILE"):
+        validate_config(config)

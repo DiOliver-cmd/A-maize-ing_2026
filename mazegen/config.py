@@ -16,6 +16,41 @@ class MazeConfig:
     algorithm: str = "backtracker"
 
 
+def validate_config(config: MazeConfig) -> None:
+    """Check that a parsed configuration describes a buildable maze.
+
+    Args:
+        config (MazeConfig): The configuration to check.
+
+    Raises:
+        ValueError: If a dimension is not positive, if entry or exit falls
+            outside the maze bounds, if entry and exit are the same cell,
+            or if the output filename is empty.
+    """
+
+    if config.width <= 0:
+        raise ValueError(f"WIDTH must be greater than 0, got {config.width}.")
+    if config.height <= 0:
+        raise ValueError(f"HEIGHT must be greater than 0, got {config.height}.")
+
+    last_x, last_y = config.width - 1, config.height - 1
+    for name, (x, y) in (("ENTRY", config.entry), ("EXIT", config.exit)):
+        if not (0 <= x < config.width and 0 <= y < config.height):
+            raise ValueError(
+                f"{name} {x},{y} is outside the maze bounds "
+                f"(0,0 to {last_x},{last_y})."
+            )
+
+    if config.entry == config.exit:
+        raise ValueError(
+            f"ENTRY and EXIT must be different cells, "
+            f"both are {config.entry[0]},{config.entry[1]}."
+        )
+
+    if not config.output_file:
+        raise ValueError("OUTPUT_FILE must not be empty.")
+
+
 def parse_bool(value: str) -> bool:
     """Parse a string representation of a boolean value."""
 
@@ -74,7 +109,7 @@ def parse_config(path: str) -> MazeConfig:
 
     algorithm = raw_data.get("ALGORITHM", "backtracker")
 
-    return MazeConfig(
+    config = MazeConfig(
         width=width,
         height=height,
         entry=entry,
@@ -84,3 +119,5 @@ def parse_config(path: str) -> MazeConfig:
         seed=seed,
         algorithm=algorithm
     )
+    validate_config(config)
+    return config
