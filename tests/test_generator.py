@@ -2,6 +2,7 @@
 
 from mazegen.config import MazeConfig
 from mazegen.generator import MazeGenerator
+import pytest
 
 
 def test_generator_initialization() -> None:
@@ -31,3 +32,25 @@ def test_generate_backtracker_determinism() -> None:
     gen1.generate_backtracker()
     gen2.generate_backtracker()
     assert gen1.grid == gen2.grid
+
+
+def test_pattern_42_applied_on_large_grid() -> None:
+    """Garante que o padrão '42' é desenhado em grades grandes."""
+    config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", True, seed=42)
+    gen = MazeGenerator(config)
+    gen._apply_pattern_42()
+    # O padrão '42' possui 20 células de obstáculo
+    assert len(gen.obstacles) == 20
+
+
+def test_pattern_42_ignored_on_small_grid(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Garante aviso e 0 obstáculos em grades pequenas."""
+    config = MazeConfig(4, 4, (0, 0), (3, 3), "out.txt", True, seed=42)
+    gen = MazeGenerator(config)
+    gen._apply_pattern_42()
+    assert len(gen.obstacles) == 0
+    captured = capsys.readouterr()
+    expected_msg = "Warning: maze too small to draw the '42' pattern."
+    assert expected_msg in captured.out
