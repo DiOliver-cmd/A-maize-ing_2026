@@ -324,3 +324,236 @@ class MazeGenerator:
 
     def generate_perfect_base(self) -> None:
         self.generate_backtracker()
+
+    def _count_open_passages(self, x: int, y: int) -> int:
+        """Count the number of open passages from a cell."""
+        count = 0
+        cell_walls = self.grid[y][x]
+        for direction, (dx, dy) in MOVE_OFFSETS.items():
+            if not (cell_walls & direction.value):
+                nx, ny = x + dx, y + dy
+                if self.is_valid_cell(nx, ny) and (nx, ny) not in self.obstacles:
+                    count += 1
+        return count
+
+    def _get_real_dead_ends(self) -> list[tuple[int, int]]:
+        """Get all real dead-ends (degree 1 cells with an openable
+        wall to a normal cell)."""
+        dead_ends = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if (x, y) in self.obstacles:
+                    continue
+                if self._count_open_passages(x, y) == 1:
+                    # Check if it has an openable wall to a normal cell
+                    cell_walls = self.grid[y][x]
+                    for direction, (dx, dy) in MOVE_OFFSETS.items():
+                        if cell_walls & direction.value:
+                            nx, ny = x + dx, y + dy
+                            if (self.is_valid_cell(nx, ny)
+                                    and (nx, ny) not in self.obstacles
+                                    and not (self.grid[ny][nx] == Direction.ALL_WALLS)):
+                                dead_ends.append((x, y))
+                                break
+        return dead_ends
+
+    def _creates_open_area(self, x: int, y: int) -> bool:
+        """Check if opening a wall at (x,y) would create a 3x3 fully open area.
+
+        A 3x3 area is "fully open" if all internal walls between the 9 cells are open
+        (i.e., corridor width would be 3, violating the max width of 2).
+        """
+        # Check all 3x3 regions that include (x,y)
+        for ry in range(max(0, y - 2), min(self.height - 2, y + 1)):
+            for rx in range(max(0, x - 2), min(self.width - 2, x + 1)):
+                # Check if this 3x3 region would be fully open (all internal walls open)
+                all_internal_open = True
+                for dy in range(3):
+                    for dx in range(3):
+                        cx, cy = rx + dx, ry + dy
+                        if (cx, cy) in self.obstacles:
+                            all_internal_open = False
+                            break
+                        # Check walls to the right (EAST) and down (SOUTH)
+                        # within the 3x3
+                        if dx < 2:  # Not the rightmost column - check EAST wall
+                            if self.grid[cy][cx] & Direction.EAST.value:
+                                all_internal_open = False
+                                break
+                        if dy < 2:  # Not the bottom row - check SOUTH wall
+                            if self.grid[cy][cx] & Direction.SOUTH.value:
+                                all_internal_open = False
+                                break
+                    if not all_internal_open:
+                        break
+                if all_internal_open:
+                    return True
+        return False
+
+    def _ensure_key_cells_open(self) -> None:
+        """Ensure the four corners and center cell(s) are open corridors."""
+        # Four corners
+        corners = [
+            (0, 0),
+            (self.width - 1, 0),
+            (0, self.height - 1),
+            (self.width - 1, self.height - 1),
+        ]
+        # Center cell(s)
+        center_cells = []
+        if self.width % 2 == 1 and self.height % 2 == 1:
+            center_cells.append((self.width // 2, self.height // 2))
+        elif self.width % 2 == 0 and self.height % 2 == 1:
+            center_cells.append((self.width // 2 - 1, self.height // 2))
+            center_cells.append((self.width // 2, self.height // 2))
+        elif self.width % 2 == 1 and self.height % 2 == 0:
+            center_cells.append((self.width // 2, self.height // 2 - 1))
+            center_cells.append((self.width // 2, self.height // 2))
+        else:
+            center_cells.append((self.width // 2 - 1, self.height // 2 - 1))
+            center_cells.append((self.width // 2, self.height // 2 - 1))
+            center_cells.append((self.width // 2 - 1, self.height // 2))
+            center_cells.append((self.width // 2, self.height // 2))
+
+        key_cells = corners + center_cells
+
+        for x, y in key_cells:
+            if (x, y) in self.obstacles:
+                # If a key cell is an obstacle, we need to handle it
+                # For now, remove from obstacles if it's entry/exit
+                if (x, y) == self.config.entry or (x, y) == self.config.exit:
+                    self.obstacles.discard((x, y))
+                continue
+            # Ensure the cell is not fully closed
+            if self.grid[y][x] == Direction.ALL_WALLS:
+                # Open a wall to a valid neighbor
+                for direction, (dx, dy) in MOVE_OFFSETS.items():
+                    nx, ny = x + dx, y + dy
+                    if self.is_valid_cell(nx, ny) and (nx, ny) not in self.obstacles:
+                        self.remove_wall((x, y), (nx, ny))
+                        break
+
+    def _add_loops(self, min_loops: int = 2) -> None:
+        """Add loops by removing additional walls until we have at least min_loops."""
+        base_seed = self.config.seed if self.config.seed is not None else 0
+        rng = random.Random(base_seed + 1000)  # Different seed for loop addition
+
+        # Calculate current loops using the same formula as analyzer
+        def count_loops() -> int:
+            reachable = self.get_reachable_cells(self.config.entry)
+            open_passages = 0
+            for x, y in reachable:
+                cell_walls = self.grid[y][x]
+                for direction, (dx, dy) in MOVE_OFFSETS.items():
+                    if not (cell_walls & direction.value):
+                        nx, ny = x + dx, y + dy
+                        if (nx, ny) in reachable and (nx, ny) > (x, y):
+                            open_passages += 1
+            return open_passages - len(reachable) + 1
+
+        current_loops = count_loops()
+        attempts = 0
+        max_attempts = self.width * self.height * 4
+
+        while current_loops < min_loops and attempts < max_attempts:
+            # Find candidate walls to remove (between two non-obstacle cells)
+            candidates = []
+            for y in range(self.height):
+                for x in range(self.width):
+                    if (x, y) in self.obstacles:
+                        continue
+                    for direction, (dx, dy) in MOVE_OFFSETS.items():
+                        nx, ny = x + dx, y + dy
+                        if not self.is_valid_cell(nx, ny):
+                            continue
+                        if (nx, ny) in self.obstacles:
+                            continue
+                        # Only consider walls that are currently closed
+                        if self.grid[y][x] & direction.value:
+                            # Check if removing this wall would create a 3x3 open area
+                            # Temporarily remove and check
+                            self.grid[y][x] &= ~direction.value
+                            self.grid[ny][nx] &= ~OPPOSITE[direction].value
+                            creates_open = (
+                                self._creates_open_area(x, y)
+                                or self._creates_open_area(nx, ny)
+                            )
+                            # Restore
+                            self.grid[y][x] |= direction.value
+                            self.grid[ny][nx] |= OPPOSITE[direction].value
+                            if not creates_open:
+                                candidates.append(((x, y), (nx, ny), direction))
+
+            if not candidates:
+                break
+
+            # Pick a random candidate
+            (x1, y1), (x2, y2), direction = rng.choice(candidates)
+            self.remove_wall((x1, y1), (x2, y2))
+            current_loops = count_loops()
+            attempts += 1
+
+    def _reduce_dead_ends(self, max_dead_ends: int = 2) -> None:
+        """Reduce real dead-ends to at most max_dead_ends by opening walls."""
+        base_seed = self.config.seed if self.config.seed is not None else 0
+        rng = random.Random(base_seed + 2000)  # Different seed for dead-end reduction
+
+        max_attempts = self.width * self.height * 4
+        attempts = 0
+
+        while attempts < max_attempts:
+            dead_ends = self._get_real_dead_ends()
+            if len(dead_ends) <= max_dead_ends:
+                break
+
+            # Pick a random dead-end
+            x, y = rng.choice(dead_ends)
+
+            # Find a closed wall to a normal cell (not obstacle, not fully closed)
+            cell_walls = self.grid[y][x]
+            candidates = []
+            for direction, (dx, dy) in MOVE_OFFSETS.items():
+                if cell_walls & direction.value:
+                    nx, ny = x + dx, y + dy
+                    if (self.is_valid_cell(nx, ny)
+                            and (nx, ny) not in self.obstacles
+                            and not (self.grid[ny][nx] == Direction.ALL_WALLS)):
+                        # Check if opening this wall would create a 3x3 open area
+                        self.grid[y][x] &= ~direction.value
+                        self.grid[ny][nx] &= ~OPPOSITE[direction].value
+                        creates_open = (
+                            self._creates_open_area(x, y)
+                            or self._creates_open_area(nx, ny)
+                        )
+                        # Restore
+                        self.grid[y][x] |= direction.value
+                        self.grid[ny][nx] |= OPPOSITE[direction].value
+                        if not creates_open:
+                            candidates.append((direction, (nx, ny)))
+
+            if candidates:
+                direction, (nx, ny) = rng.choice(candidates)
+                self.remove_wall((x, y), (nx, ny))
+            else:
+                # If no candidates for this dead-end, try another one
+                pass
+
+            attempts += 1
+
+    def generate_playable(self) -> None:
+        """Generate a playable maze (PERFECT=False) with loops,
+        controlled dead-ends, and open key cells."""
+        # Step 1: Generate perfect base
+        self.generate_perfect_base()
+
+        # Step 2: Ensure key cells (corners and center) are open
+        self._ensure_key_cells_open()
+
+        # Step 3: Add loops (at least 2)
+        self._add_loops(min_loops=2)
+
+        # Step 4: Reduce dead-ends to at most 2
+        self._reduce_dead_ends(max_dead_ends=2)
+
+        # Step 5: Final connectivity check
+        self.ensure_full_connectivity()
