@@ -1,6 +1,7 @@
 """Module for maze structure definition and generation logic."""
 
 import random
+from collections import deque
 from enum import IntFlag
 from typing import Optional
 from mazegen.config import MazeConfig
@@ -38,6 +39,14 @@ MOVE_OFFSETS: dict[Direction, tuple[int, int]] = {
     Direction.EAST: (1, 0),
     Direction.SOUTH: (0, 1),
     Direction.WEST: (-1, 0),
+}
+
+# Letter used for each direction in the output file path
+DIRECTION_LETTERS: dict[Direction, str] = {
+    Direction.NORTH: "N",
+    Direction.EAST: "E",
+    Direction.SOUTH: "S",
+    Direction.WEST: "W",
 }
 
 # Bitmaps for the '42' obstacle pattern (5x3 matrices)
@@ -222,3 +231,41 @@ class MazeGenerator:
             exit_x, exit_y = self.config.exit
             f.write(f"{exit_x},{exit_y}\n")
             f.write(f"{path_str}\n")
+
+    def shortest_path(self) -> str:
+        """Find the shortest path from entry to exit with a BFS.
+
+        Returns:
+            str: The path as direction letters (ex: "EESN"), or an empty
+                string if the exit cannot be reached from the entry.
+        """
+        start = self.config.entry
+        goal = self.config.exit
+        visited: set[tuple[int, int]] = {start}
+        parent: dict[tuple[int, int], tuple[tuple[int, int], str]] = {}
+        queue: deque[tuple[int, int]] = deque([start])
+
+        while queue:
+            x, y = queue.popleft()
+            if (x, y) == goal:
+                break
+            for direction, (dx, dy) in MOVE_OFFSETS.items():
+                neighbor = (x + dx, y + dy)
+                wall_closed = self.grid[y][x] & direction
+                if wall_closed or neighbor in visited:
+                    continue
+                if not self.is_valid_cell(*neighbor):
+                    continue
+                visited.add(neighbor)
+                parent[neighbor] = ((x, y), DIRECTION_LETTERS[direction])
+                queue.append(neighbor)
+
+        if goal not in visited:
+            return ""
+
+        letters: list[str] = []
+        cell = goal
+        while cell != start:
+            cell, letter = parent[cell]
+            letters.append(letter)
+        return "".join(reversed(letters))
