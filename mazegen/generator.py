@@ -214,6 +214,7 @@ class MazeGenerator:
                 stack.append(next_cell)
             else:
                 stack.pop()
+        self.ensure_full_connectivity()
 
     def write_output(self, filename: str, path_str: str = "") -> None:
         """Write maze configuration and hex matrix to output file.
@@ -269,3 +270,57 @@ class MazeGenerator:
             cell, letter = parent[cell]
             letters.append(letter)
         return "".join(reversed(letters))
+
+    def get_reachable_cells(
+        self, start_cell: tuple[int, int]
+    ) -> set[tuple[int, int]]:
+        reachable: set[tuple[int, int]] = {start_cell}
+        queue: deque[tuple[int, int]] = deque([start_cell])
+        while queue:
+            curr_x, curr_y = queue.popleft()
+            cell_walls = self.grid[curr_y][curr_x]
+            for direction, (dx, dy) in MOVE_OFFSETS.items():
+                if not (cell_walls & direction.value):
+                    nx, ny = curr_x + dx, curr_y + dy
+                    if (
+                        self.is_valid_cell(nx, ny)
+                        and (nx, ny) not in reachable
+                        and (nx, ny) not in self.obstacles
+                    ):
+                        reachable.add((nx, ny))
+                        queue.append((nx, ny))
+        return reachable
+
+    def ensure_full_connectivity(self) -> None:
+        all_cells = {
+            (x, y)
+            for y in range(self.height)
+            for x in range(self.width)
+            if (x, y) not in self.obstacles
+        }
+        while True:
+            reachable = self.get_reachable_cells(self.config.entry)
+            unreachable = all_cells - reachable
+            if not unreachable:
+                break
+            connected = False
+            for unreach_x, unreach_y in unreachable:
+                for _, (dx, dy) in MOVE_OFFSETS.items():
+                    nx, ny = unreach_x + dx, unreach_y + dy
+                    if (nx, ny) in reachable:
+                        self.remove_wall((unreach_x, unreach_y), (nx, ny))
+                        connected = True
+                        break
+                if connected:
+                    break
+            if not connected:
+                target = next(iter(unreachable))
+                tx, ty = target
+                for _, (dx, dy) in MOVE_OFFSETS.items():
+                    nx, ny = tx + dx, ty + dy
+                    if self.is_valid_cell(nx, ny) and (nx, ny) not in self.obstacles:
+                        self.remove_wall(target, (nx, ny))
+                        break
+
+    def generate_perfect_base(self) -> None:
+        self.generate_backtracker()

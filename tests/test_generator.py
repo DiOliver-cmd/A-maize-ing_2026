@@ -92,3 +92,33 @@ def test_shortest_path_follows_open_walls_to_exit() -> None:
         dx, dy = MOVE_OFFSETS[direction]
         x, y = x + dx, y + dy
     assert (x, y) == config.exit
+
+
+def test_get_reachable_cells() -> None:
+    """Garante que get_reachable_cells retorna todas as células conectadas."""
+    config = MazeConfig(10, 10, (0, 0), (9, 9), "out.txt", True, seed=42)
+    gen = MazeGenerator(config)
+    gen.generate_backtracker()
+    reachable = gen.get_reachable_cells(config.entry)
+    expected_count = (gen.width * gen.height) - len(gen.obstacles)
+    assert len(reachable) == expected_count
+
+
+def test_ensure_full_connectivity() -> None:
+    """Garante que a conectividade total (T3.2) elimina corredores isolados."""
+    config = MazeConfig(15, 12, (0, 0), (14, 11), "out.txt", True, seed=42)
+    gen = MazeGenerator(config)
+    gen.generate_backtracker()
+    reachable = gen.get_reachable_cells(config.entry)
+    total_valid_cells = (gen.width * gen.height) - len(gen.obstacles)
+    assert len(reachable) == total_valid_cells
+
+
+def test_generate_perfect_base() -> None:
+    """Garante a geração de uma base perfeita (T5.1) para o modo jogável."""
+    config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
+    gen = MazeGenerator(config)
+    gen.generate_perfect_base()
+    reachable = gen.get_reachable_cells(config.entry)
+    total_valid_cells = (gen.width * gen.height) - len(gen.obstacles)
+    assert len(reachable) == total_valid_cells
