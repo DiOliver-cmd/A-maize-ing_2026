@@ -33,10 +33,11 @@ clean:
 
 # Verificação padrão de linter e tipagem nos pacotes do projeto
 lint: $(VENV)
-	$(FLAKE8) mazegen tests
-	$(MYPY) mazegen tests
+	$(FLAKE8) .
+	$(MYPY) . --warn-return-any --warn-unused-ignores --ignore-missing-imports \
+	--disallow-untyped-defs --check-untyped-defs
 
 # Verificação estrita de tipagem
 lint-strict: $(VENV)
-	$(FLAKE8) mazegen tests
-	$(MYPY) --strict mazegen tests
+	$(FLAKE8) .
+	$(MYPY) . --strict
