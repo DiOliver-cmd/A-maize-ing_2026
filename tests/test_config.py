@@ -49,7 +49,6 @@ def test_parse_config_valid_file(tmp_path: Path) -> None:
     assert config.seed == 42
 
 
-@pytest.mark.xfail(reason="Aguardando implementação da validação semântica (T1.2)")
 def test_parse_config_invalid_dimensions(tmp_path: Path) -> None:
     """Test that invalid dimensions raise ValueError."""
     config_file = tmp_path / "invalid.txt"
