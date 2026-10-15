@@ -122,3 +122,133 @@ def test_generate_perfect_base() -> None:
     reachable = gen.get_reachable_cells(config.entry)
     total_valid_cells = (gen.width * gen.height) - len(gen.obstacles)
     assert len(reachable) == total_valid_cells
+
+
+def test_generate_playable_creates_loops() -> None:
+    """Garante que a geração jogável cria pelo menos 2 loops (T5.3)."""
+    config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
+    gen = MazeGenerator(config)
+    gen.generate_playable()
+
+    # Count loops using the same formula as maze_analyzer
+    reachable = gen.get_reachable_cells(config.entry)
+    open_passages = 0
+    for x, y in reachable:
+        cell_walls = gen.grid[y][x]
+        for direction, (dx, dy) in MOVE_OFFSETS.items():
+            if not (cell_walls & direction.value):
+                nx, ny = x + dx, y + dy
+                if (nx, ny) in reachable and (nx, ny) > (x, y):
+                    open_passages += 1
+    loops = open_passages - len(reachable) + 1
+
+    assert loops >= 2
+
+    # Verify no 3x3 fully open area
+    assert not gen._creates_open_area(0, 0)  # Check a few positions
+    for y in range(gen.height - 2):
+        for x in range(gen.width - 2):
+            assert not gen._creates_open_area(x, y)
+
+
+def test_generate_playable_controls_dead_ends() -> None:
+    """Garante que a quantidade de dead-ends reais é reduzida a <= 2 (T5.4)."""
+    config = MazeConfig(15, 12, (0, 0), (14, 11), "out.txt", False, seed=10)
+    gen = MazeGenerator(config)
+    gen.generate_playable()
+
+    # Count real dead-ends (matching maze_analyzer definition)
+    real_dead_ends = 0
+    reachable = gen.get_reachable_cells(config.entry)
+    for x, y in reachable:
+        if (x, y) in gen.obstacles:
+            continue
+        # Count open passages
+        open_count = 0
+        cell_walls = gen.grid[y][x]
+        for direction, (dx, dy) in MOVE_OFFSETS.items():
+            if not (cell_walls & direction.value):
+                nx, ny = x + dx, y + dy
+                if gen.is_valid_cell(nx, ny) and (nx, ny) not in gen.obstacles:
+                    open_count += 1
+        if open_count == 1:
+            # Check if it's a "real" dead-end (has openable wall to normal cell)
+            has_openable = False
+            for direction, (dx, dy) in MOVE_OFFSETS.items():
+                if cell_walls & direction.value:
+                    nx, ny = x + dx, y + dy
+                    if (
+                        gen.is_valid_cell(nx, ny)
+                        and (nx, ny) not in gen.obstacles
+                        and not (gen.grid[ny][nx] == Direction.ALL_WALLS)
+                    ):
+                        has_openable = True
+                        break
+            if has_openable:
+                real_dead_ends += 1
+
+    assert real_dead_ends <= 2
+
+
+def test_generate_playable_key_cells_reachable() -> None:
+    """Garante que cantos e centro são alcançáveis no modo jogável (T5.2)."""
+    config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
+    gen = MazeGenerator(config)
+    gen.generate_playable()
+
+    reachable = gen.get_reachable_cells(config.entry)
+
+    # Four corners
+    corners = [
+        (0, 0),
+        (gen.width - 1, 0),
+        (0, gen.height - 1),
+        (gen.width - 1, gen.height - 1),
+    ]
+    for corner in corners:
+        assert corner in reachable, f"Corner {corner} not reachable"
+
+    # Center cell(s)
+    center_candidates = set()
+    if gen.width % 2 == 1 and gen.height % 2 == 1:
+        center_candidates.add((gen.width // 2, gen.height // 2))
+    elif gen.width % 2 == 0 and gen.height % 2 == 1:
+        center_candidates.add((gen.width // 2 - 1, gen.height // 2))
+        center_candidates.add((gen.width // 2, gen.height // 2))
+    elif gen.width % 2 == 1 and gen.height % 2 == 0:
+        center_candidates.add((gen.width // 2, gen.height // 2 - 1))
+        center_candidates.add((gen.width // 2, gen.height // 2))
+    else:
+        center_candidates.add((gen.width // 2 - 1, gen.height // 2 - 1))
+        center_candidates.add((gen.width // 2, gen.height // 2 - 1))
+        center_candidates.add((gen.width // 2 - 1, gen.height // 2))
+        center_candidates.add((gen.width // 2, gen.height // 2))
+
+    assert any(c in reachable for c in center_candidates), "Center not reachable"
+
+
+def test_generate_playable_wall_coherence() -> None:
+    """Garante coerência de paredes no modo jogável."""
+    config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
+    gen = MazeGenerator(config)
+    gen.generate_playable()
+
+    # Check all adjacent cells have matching walls
+    for y in range(gen.height):
+        for x in range(gen.width):
+            if (x, y) in gen.obstacles:
+                continue
+            for direction, (dx, dy) in MOVE_OFFSETS.items():
+                nx, ny = x + dx, y + dy
+                if gen.is_valid_cell(nx, ny) and (nx, ny) not in gen.obstacles:
+                    wall_a = bool(gen.grid[y][x] & direction.value)
+                    opp = {
+                        Direction.NORTH: Direction.SOUTH,
+                        Direction.SOUTH: Direction.NORTH,
+                        Direction.EAST: Direction.WEST,
+                        Direction.WEST: Direction.EAST,
+                    }[direction]
+                    wall_b = bool(gen.grid[ny][nx] & opp.value)
+                    assert wall_a == wall_b, (
+                        f"Incoherent wall at ({x},{y}) {direction.name}"
+                    )
