@@ -2,7 +2,14 @@
 
 from pathlib import Path
 import pytest
-from mazegen.config import MazeConfig, parse_config, validate_config
+from mazegen.config import (
+    MazeConfig,
+    parse_bool,
+    parse_config,
+    parse_int,
+    parse_tuple,
+    validate_config,
+)
 
 
 def test_maze_config_instantiation() -> None:
@@ -98,3 +105,23 @@ def test_validate_config_rejects_empty_output_file() -> None:
     config = MazeConfig(10, 10, (0, 0), (9, 9), "", True)
     with pytest.raises(ValueError, match="OUTPUT_FILE"):
         validate_config(config)
+
+
+def test_parse_int_rejects_non_integer() -> None:
+    """A non-numeric value must name the key in the error."""
+    with pytest.raises(ValueError, match="WIDTH must be an integer"):
+        parse_int("WIDTH", "abc")
+
+
+def test_parse_tuple_rejects_bad_coordinates() -> None:
+    """Coordinates need exactly two integers."""
+    with pytest.raises(ValueError, match="ENTRY must be two integers"):
+        parse_tuple("ENTRY", "0")
+    with pytest.raises(ValueError, match="PERFECT must be True or False"):
+        parse_bool("PERFECT", "maybe")
+
+
+def test_parse_bool_rejects_unknown_value() -> None:
+    """Only true/false-like words are accepted."""
+    with pytest.raises(ValueError, match="PERFECT must be True or False"):
+        parse_bool("PERFECT", "maybe")

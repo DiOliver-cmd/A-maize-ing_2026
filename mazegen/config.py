@@ -1,3 +1,5 @@
+"""Read and validate the maze configuration file."""
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -51,7 +53,16 @@ def validate_config(config: MazeConfig) -> None:
         raise ValueError("OUTPUT_FILE must not be empty.")
 
 
-def parse_bool(value: str) -> bool:
+def parse_int(key: str, value: str) -> int:
+    """Parse an integer value, naming the key in the error message."""
+
+    try:
+        return int(value)
+    except ValueError:
+        raise ValueError(f"{key} must be an integer, got '{value}'.")
+
+
+def parse_bool(key: str, value: str) -> bool:
     """Parse a string representation of a boolean value."""
 
     val = value.strip().lower()
@@ -59,19 +70,20 @@ def parse_bool(value: str) -> bool:
         return True
     if val in ("false", "0", "no", "n", "f"):
         return False
-    raise ValueError(f"Valor booleano inválido: '{value}'")
+    raise ValueError(f"{key} must be True or False, got '{value}'.")
 
 
-def parse_tuple(value: str) -> tuple[int, int]:
+def parse_tuple(key: str, value: str) -> tuple[int, int]:
     """Parse a coordinate string in '(x, y)' or 'x,y' format."""
 
-    clean_val = value.replace("(", "").replace(")", "").strip()
-    parts = clean_val.split(",")
+    message = f"{key} must be two integers 'x,y', got '{value}'."
+    parts = value.replace("(", "").replace(")", "").split(",")
     if len(parts) != 2:
-        raise ValueError(
-            f"Coordenadas inválido: '{value}'. Esperado '(x, y)' o 'x,y'."
-            )
-    return int(parts[0].strip()), int(parts[1].strip())
+        raise ValueError(message)
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError:
+        raise ValueError(message)
 
 
 def parse_config(path: str) -> MazeConfig:
@@ -96,16 +108,16 @@ def parse_config(path: str) -> MazeConfig:
         msg = ", ".join(missing)
         raise ValueError(f"Missing required configuration keys: {msg}.")
 
-    width = int(raw_data["WIDTH"])
-    height = int(raw_data["HEIGHT"])
-    entry = parse_tuple(raw_data["ENTRY"])
-    exit = parse_tuple(raw_data["EXIT"])
+    width = parse_int("WIDTH", raw_data["WIDTH"])
+    height = parse_int("HEIGHT", raw_data["HEIGHT"])
+    entry = parse_tuple("ENTRY", raw_data["ENTRY"])
+    exit = parse_tuple("EXIT", raw_data["EXIT"])
     output_file = raw_data["OUTPUT_FILE"]
-    perfect = parse_bool(raw_data["PERFECT"])
+    perfect = parse_bool("PERFECT", raw_data["PERFECT"])
 
     seed: Optional[int] = None
     if "SEED" in raw_data and raw_data["SEED"]:
-        seed = int(raw_data["SEED"])
+        seed = parse_int("SEED", raw_data["SEED"])
 
     algorithm = raw_data.get("ALGORITHM", "backtracker")
 
