@@ -1,9 +1,73 @@
 #!/usr/bin/env python3
-"""Generate a maze from a configuration file and write it to disk."""
+"""Generate a maze from a configuration file, write it and display it."""
 
+import random
 import sys
+from dataclasses import replace
 
-from mazegen import MazeGenerator, parse_config
+from mazegen import MazeConfig, MazeGenerator, parse_config
+from mazegen.renderer_ascii import WALL_COLORS, path_cells, render
+
+CLEAR_SCREEN = "\033[2J\033[H"
+MENU = (
+    "=== A-Maze-ing ===\n"
+    "1. Re-generate a new maze\n"
+    "2. Show / Hide the shortest path\n"
+    "3. Change the wall colour\n"
+    "4. Quit"
+)
+
+
+def generate_maze(config: MazeConfig) -> tuple[MazeGenerator, str]:
+    """Generate a maze, write it to the output file and return it.
+
+    Args:
+        config (MazeConfig): The validated configuration.
+
+    Returns:
+        tuple[MazeGenerator, str]: The generator and the shortest path.
+    """
+    generator = MazeGenerator(config)
+    if config.perfect:
+        generator.generate_perfect_base()
+    else:
+        generator.generate_playable()
+    path = generator.shortest_path()
+    generator.write_output(config.output_file, path)
+    return generator, path
+
+
+def interact(config: MazeConfig) -> None:
+    """Show the maze and react to the user's menu choices until they quit.
+
+    Args:
+        config (MazeConfig): The validated configuration.
+    """
+    generator, path = generate_maze(config)
+    show_path = False
+    color_index = 0
+
+    while True:
+        cells = path_cells(config.entry, path) if show_path else set()
+        print(render(generator.grid, config.entry, config.exit, cells,
+                     WALL_COLORS[color_index]))
+        print(f"Seed: {config.seed}   Output: {config.output_file}")
+        print(MENU)
+        try:
+            choice = input("Choice? (1-4): ").strip()
+        except EOFError:
+            return
+        print(CLEAR_SCREEN, end="")
+
+        if choice == "1":
+            config = replace(config, seed=random.randrange(1_000_000))
+            generator, path = generate_maze(config)
+        elif choice == "2":
+            show_path = not show_path
+        elif choice == "3":
+            color_index = (color_index + 1) % len(WALL_COLORS)
+        elif choice == "4":
+            return
 
 
 def main(argv: list[str]) -> int:
@@ -21,21 +85,13 @@ def main(argv: list[str]) -> int:
 
     try:
         config = parse_config(argv[0])
-        generator = MazeGenerator(config)
-        if config.perfect:
-            generator.generate_perfect_base()
-        else:
-            generator.generate_playable()
-        path = generator.shortest_path()
-        generator.write_output(config.output_file, path)
+        interact(config)
     except OSError as error:
         print(f"Error: {error.filename}: {error.strerror}.")
         return 1
     except ValueError as error:
         print(f"Error: {error}")
         return 1
-
-    print(f"Maze written to '{config.output_file}'.")
     return 0
 
 
