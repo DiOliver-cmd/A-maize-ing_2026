@@ -51,10 +51,15 @@ def test_render_draws_closed_cells_as_blocks() -> None:
 
 def test_mlx_renderer_import() -> None:
     """Verifica se o renderizador MLX pode ser importado (se instalado)."""
-    try:
-        from mazegen.renderer_mlx import MazeWindow, MLX_AVAILABLE
-        assert MLX_AVAILABLE is True
-        _ = MazeWindow  # suppress unused warning
-    except RuntimeError:
-        # MLX não instalado no ambiente de teste - OK
-        pass
+    from mazegen.renderer_mlx import MazeWindow, MLX_AVAILABLE
+
+    if MLX_AVAILABLE:
+        # MLX instalado: import deve funcionar e classe disponível
+        assert MazeWindow is not None
+    else:
+        # MLX não instalado: instanciar deve levantar RuntimeError
+        try:
+            MazeWindow([], (0, 0), (0, 0))
+            assert False, "Expected RuntimeError when MLX not available"
+        except RuntimeError:
+            pass
