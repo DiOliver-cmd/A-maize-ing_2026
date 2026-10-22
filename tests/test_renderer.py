@@ -47,3 +47,14 @@ def test_render_draws_closed_cells_as_blocks() -> None:
     grid = [[15, 15, 15]]
     drawing = plain(render(grid, (0, 0), (2, 0), set(), WALL_COLORS[0]))
     assert drawing.count(BLOCK_MARK) == 1
+
+
+def test_mlx_renderer_import() -> None:
+    """Verifica se o renderizador MLX pode ser importado (se instalado)."""
+    try:
+        from mazegen.renderer_mlx import MazeWindow, MLX_AVAILABLE
+        assert MLX_AVAILABLE is True
+        _ = MazeWindow  # suppress unused warning
+    except RuntimeError:
+        # MLX não instalado no ambiente de teste - OK
+        pass
