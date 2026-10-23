@@ -252,3 +252,52 @@ def test_generate_playable_wall_coherence() -> None:
                     assert wall_a == wall_b, (
                         f"Incoherent wall at ({x},{y}) {direction.name}"
                     )
+
+
+def test_module_public_api() -> None:
+    """Testa se a API pública do módulo funciona conforme exemplo do __init__.py."""
+    from mazegen import MazeGenerator, MazeConfig
+
+    config = MazeConfig(10, 10, (0, 0), (9, 9), "out.txt", True, seed=42)
+    gen = MazeGenerator(config)
+    gen.generate()  # método público adicionado
+    assert gen.grid is not None
+    path = gen.shortest_path()
+    assert isinstance(path, str)
+
+
+def test_generate_method_dispatch() -> None:
+    """Verifica se generate() despacha para o modo correto."""
+    from mazegen import MazeGenerator, MazeConfig
+
+    # PERFECT=True -> loops == 0
+    config1 = MazeConfig(10, 10, (0, 0), (9, 9), "out.txt", True, seed=42)
+    gen1 = MazeGenerator(config1)
+    gen1.generate()
+    reachable = gen1.get_reachable_cells(config1.entry)
+    open_passages = sum(
+        1
+        for x, y in reachable
+        for d, (dx, dy) in MOVE_OFFSETS.items()
+        if not (gen1.grid[y][x] & d.value)
+        and (x + dx, y + dy) in reachable
+        and (x + dx, y + dy) > (x, y)
+    )
+    loops = open_passages - len(reachable) + 1
+    assert loops == 0
+
+    # PERFECT=False -> loops >= 2
+    config2 = MazeConfig(10, 10, (0, 0), (9, 9), "out.txt", False, seed=42)
+    gen2 = MazeGenerator(config2)
+    gen2.generate()
+    reachable = gen2.get_reachable_cells(config2.entry)
+    open_passages = sum(
+        1
+        for x, y in reachable
+        for d, (dx, dy) in MOVE_OFFSETS.items()
+        if not (gen2.grid[y][x] & d.value)
+        and (x + dx, y + dy) in reachable
+        and (x + dx, y + dy) > (x, y)
+    )
+    loops = open_passages - len(reachable) + 1
+    assert loops >= 2

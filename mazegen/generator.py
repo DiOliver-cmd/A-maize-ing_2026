@@ -71,10 +71,23 @@ class MazeGenerator:
     """Class responsible for initializing and generating maze grids.
 
     Attributes:
-    config (MazeConfig): The parsed configuration options.
-    width (int): Grid width (columns).
-    height (int): Grid height (rows).
-    grid (list[list[int]]): 2D matrix storing cell wall bitmasks.
+        config (MazeConfig): The parsed configuration options.
+        width (int): Grid width (columns).
+        height (int): Grid height (rows).
+        grid (list[list[int]]): 2D matrix storing cell wall bitmasks.
+
+    Example:
+        >>> from mazegen import MazeGenerator, MazeConfig
+        >>> config = MazeConfig(
+        ...     width=20, height=15,
+        ...     entry=(0, 0), exit=(19, 14),
+        ...     output_file="maze.txt",
+        ...     perfect=True, seed=42
+        ... )
+        >>> gen = MazeGenerator(config)
+        >>> gen.generate()
+        >>> grid = gen.grid
+        >>> path = gen.shortest_path()
     """
 
     def __init__(self, config: MazeConfig) -> None:
@@ -324,6 +337,13 @@ class MazeGenerator:
 
     def generate_perfect_base(self) -> None:
         self.generate_backtracker()
+
+    def generate(self) -> None:
+        """Generate the maze based on config.perfect setting."""
+        if self.config.perfect:
+            self.generate_perfect_base()
+        else:
+            self.generate_playable()
 
     def _count_open_passages(self, x: int, y: int) -> int:
         """Count the number of open passages from a cell."""
