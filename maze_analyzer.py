@@ -100,6 +100,7 @@ class Maze:
 
     def __init__(self, grid: List[List[int]], entry: Optional[Cell],
                  exit: Optional[Cell]) -> None:
+        """Store the parsed grid and its optional entry and exit cells."""
         self.grid = grid
         self.entry = entry
         self.exit = exit
@@ -132,6 +133,7 @@ class Maze:
 
     @staticmethod
     def _parse_row(text: str, number: int, grid: List[List[int]]) -> List[int]:
+        """Parse one hexadecimal row and enforce a rectangular grid."""
         row = []
         for column, char in enumerate(text, start=1):
             if char not in HEX_DIGITS:
@@ -149,6 +151,7 @@ class Maze:
 
     @staticmethod
     def _parse_coordinate(text: str) -> Optional[Cell]:
+        """Parse an ``x,y`` footer line into an internal ``(row, col)``."""
         try:
             x_text, y_text = text.split(",")
             return int(y_text), int(x_text)
@@ -157,15 +160,18 @@ class Maze:
 
     # -- grid access -------------------------------------------------------- #
     def __contains__(self, cell: Cell) -> bool:
+        """Return True when *cell* lies inside the grid."""
         row, col = cell
         return 0 <= row < self.rows and 0 <= col < self.cols
 
     def __iter__(self) -> Iterator[Cell]:
+        """Yield every cell in row-major order."""
         for row in range(self.rows):
             for col in range(self.cols):
                 yield row, col
 
     def walls(self, cell: Cell) -> int:
+        """Return the wall bitmask of *cell*."""
         return self.grid[cell[0]][cell[1]]
 
     def is_fully_closed(self, cell: Cell) -> bool:
@@ -174,6 +180,7 @@ class Maze:
 
     # -- graph -------------------------------------------------------------- #
     def neighbour(self, cell: Cell, side: Direction) -> Cell:
+        """Return the cell adjacent to *cell* on *side*."""
         return cell[0] + side.step[0], cell[1] + side.step[1]
 
     def is_open(self, cell: Cell, side: Direction) -> bool:
@@ -270,14 +277,17 @@ class MazeReport:
 
     @property
     def max_loops(self) -> int:
+        """Edges the region would have beyond a spanning tree."""
         return max(self.potential_passages - max(len(self.region) - 1, 0), 0)
 
     @property
     def path_ratio(self) -> float:
+        """Loops as a fraction of the maximum possible loops."""
         return self.loops / self.max_loops if self.max_loops else 0.0
 
     @property
     def isolated(self) -> int:
+        """Number of cells outside the analysed region."""
         return self.maze.rows * self.maze.cols - len(self.region)
 
     @cached_property
@@ -295,6 +305,7 @@ class MazeReport:
 
     @property
     def exit_reachable(self) -> Optional[bool]:
+        """Whether the footer exit lies in the analysed region."""
         if self.maze.exit is None:
             return None
         return self.maze.exit in self.region
@@ -318,6 +329,7 @@ class MazeReport:
         return real, enclosed
 
     def _has_openable_wall(self, cell: Cell) -> bool:
+        """True if a closed wall of *cell* faces a normal corridor."""
         return any(
             (self.maze.walls(cell) & side)
             and self.maze.neighbour(cell, side) in self.maze
@@ -462,6 +474,7 @@ def _xy(cell: Cell) -> str:
 
 
 def _exit(report: MazeReport) -> str:
+    """Render the exit coordinate and whether it is reachable."""
     if report.maze.exit is None:
         return "?"
     states: Dict[Optional[bool], str] = {
@@ -472,12 +485,14 @@ def _exit(report: MazeReport) -> str:
 
 
 def _key_cells(cells: Tuple[Cell, ...]) -> str:
+    """Render the key cells that are not reachable."""
     if not cells:
         return "all reachable"
     return "NOT reachable -> " + ", ".join(_xy(cell) for cell in cells)
 
 
 def _coherence(cells: Tuple[Cell, ...]) -> str:
+    """Render a summary of incoherent wall encodings."""
     if not cells:
         return "OK (all shared walls match)"
     shown = ", ".join(_xy(cell) for cell in cells[:5])
@@ -489,6 +504,7 @@ def _coherence(cells: Tuple[Cell, ...]) -> str:
 # Entry point
 # --------------------------------------------------------------------------- #
 def parse_args(argv: List[str]) -> argparse.Namespace:
+    """Parse the command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Analyze an a_maze_ing output file: wall coherence and "
                     "whether the maze is perfect or a playable Pac-Man board.",

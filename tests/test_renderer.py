@@ -2,6 +2,8 @@
 
 import re
 
+import pytest
+
 from mazegen.config import MazeConfig
 from mazegen.generator import MazeGenerator
 from mazegen.renderer_ascii import BLOCK_MARK, WALL_COLORS, path_cells, render
@@ -50,16 +52,14 @@ def test_render_draws_closed_cells_as_blocks() -> None:
 
 
 def test_mlx_renderer_import() -> None:
-    """Verifica se o renderizador MLX pode ser importado (se instalado)."""
+    """Ensure the MLX renderer can be imported (when installed)."""
     from mazegen.renderer_mlx import MazeWindow, MLX_AVAILABLE
 
     if MLX_AVAILABLE:
-        # MLX instalado: import deve funcionar e classe disponível
         assert MazeWindow is not None
     else:
-        # MLX não instalado: instanciar deve levantar RuntimeError
-        try:
-            MazeWindow([], (0, 0), (0, 0))
-            assert False, "Expected RuntimeError when MLX not available"
-        except RuntimeError:
-            pass
+        config = MazeConfig(3, 3, (0, 0), (2, 2), "out.txt", True, seed=1)
+        generator = MazeGenerator(config)
+        generator.generate()
+        with pytest.raises(RuntimeError):
+            MazeWindow(config, generator, generator.shortest_path())
