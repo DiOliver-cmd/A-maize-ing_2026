@@ -35,18 +35,18 @@ def test_generate_backtracker_determinism() -> None:
 
 
 def test_pattern_42_applied_on_large_grid() -> None:
-    """Garante que o padrão '42' é desenhado em grades grandes."""
+    """Ensure the '42' pattern is drawn on large grids."""
     config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", True, seed=42)
     gen = MazeGenerator(config)
     gen._apply_pattern_42()
-    # O padrão '42' possui 20 células de obstáculo
+    # The '42' pattern has 20 obstacle cells
     assert len(gen.obstacles) == 20
 
 
 def test_pattern_42_ignored_on_small_grid(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Garante aviso e 0 obstáculos em grades pequenas."""
+    """Ensure a warning and 0 obstacles on small grids."""
     config = MazeConfig(4, 4, (0, 0), (3, 3), "out.txt", True, seed=42)
     gen = MazeGenerator(config)
     gen._apply_pattern_42()
@@ -95,7 +95,7 @@ def test_shortest_path_follows_open_walls_to_exit() -> None:
 
 
 def test_get_reachable_cells() -> None:
-    """Garante que get_reachable_cells retorna todas as células conectadas."""
+    """Ensure get_reachable_cells returns every connected cell."""
     config = MazeConfig(10, 10, (0, 0), (9, 9), "out.txt", True, seed=42)
     gen = MazeGenerator(config)
     gen.generate_backtracker()
@@ -105,7 +105,7 @@ def test_get_reachable_cells() -> None:
 
 
 def test_ensure_full_connectivity() -> None:
-    """Garante que a conectividade total (T3.2) elimina corredores isolados."""
+    """Ensure full connectivity (T3.2) removes isolated corridors."""
     config = MazeConfig(15, 12, (0, 0), (14, 11), "out.txt", True, seed=42)
     gen = MazeGenerator(config)
     gen.generate_backtracker()
@@ -115,7 +115,7 @@ def test_ensure_full_connectivity() -> None:
 
 
 def test_generate_perfect_base() -> None:
-    """Garante a geração de uma base perfeita (T5.1) para o modo jogável."""
+    """Ensure a perfect base (T5.1) is built for playable mode."""
     config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
     gen = MazeGenerator(config)
     gen.generate_perfect_base()
@@ -125,7 +125,7 @@ def test_generate_perfect_base() -> None:
 
 
 def test_generate_playable_creates_loops() -> None:
-    """Garante que a geração jogável cria pelo menos 2 loops (T5.3)."""
+    """Ensure playable generation creates at least 2 loops (T5.3)."""
     config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
     gen = MazeGenerator(config)
     gen.generate_playable()
@@ -152,7 +152,7 @@ def test_generate_playable_creates_loops() -> None:
 
 
 def test_generate_playable_controls_dead_ends() -> None:
-    """Garante que a quantidade de dead-ends reais é reduzida a <= 2 (T5.4)."""
+    """Ensure the number of real dead-ends is reduced to <= 2 (T5.4)."""
     config = MazeConfig(15, 12, (0, 0), (14, 11), "out.txt", False, seed=10)
     gen = MazeGenerator(config)
     gen.generate_playable()
@@ -191,7 +191,7 @@ def test_generate_playable_controls_dead_ends() -> None:
 
 
 def test_generate_playable_key_cells_reachable() -> None:
-    """Garante que cantos e centro são alcançáveis no modo jogável (T5.2)."""
+    """Ensure corners and centre are reachable in playable mode (T5.2)."""
     config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
     gen = MazeGenerator(config)
     gen.generate_playable()
@@ -228,7 +228,7 @@ def test_generate_playable_key_cells_reachable() -> None:
 
 
 def test_generate_playable_wall_coherence() -> None:
-    """Garante coerência de paredes no modo jogável."""
+    """Ensure wall coherence in playable mode."""
     config = MazeConfig(20, 15, (0, 0), (19, 14), "out.txt", False, seed=42)
     gen = MazeGenerator(config)
     gen.generate_playable()
@@ -255,7 +255,7 @@ def test_generate_playable_wall_coherence() -> None:
 
 
 def test_module_public_api() -> None:
-    """Testa se a API pública do módulo funciona conforme exemplo do __init__.py."""
+    """Test that the public API works as in the __init__.py example."""
     from mazegen import MazeGenerator, MazeConfig
 
     config = MazeConfig(10, 10, (0, 0), (9, 9), "out.txt", True, seed=42)
@@ -267,7 +267,7 @@ def test_module_public_api() -> None:
 
 
 def test_generate_method_dispatch() -> None:
-    """Verifica se generate() despacha para o modo correto."""
+    """Ensure generate() dispatches to the correct mode."""
     from mazegen import MazeGenerator, MazeConfig
 
     # PERFECT=True -> loops == 0

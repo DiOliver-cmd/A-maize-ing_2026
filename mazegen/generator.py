@@ -157,11 +157,11 @@ class MazeGenerator:
         x2, y2 = cell_b
 
         if not (self.is_valid_cell(x1, y1) and self.is_valid_cell(x2, y2)):
-            raise ValueError(f"Coordenadas fora dos limites: {cell_a}, {cell_b}")
+            raise ValueError(f"Coordinates out of bounds: {cell_a}, {cell_b}")
 
         direction_a_to_b = self.get_direction(cell_a, cell_b)
         if direction_a_to_b is None:
-            raise ValueError(f"Células não são adjacentes: {cell_a}, {cell_b}")
+            raise ValueError(f"Cells are not adjacent: {cell_a}, {cell_b}")
 
         direction_b_to_a = OPPOSITE[direction_a_to_b]
         # Clear wall bit in both cells
@@ -171,7 +171,7 @@ class MazeGenerator:
     def get_unvisited_neighbors(
         self, x: int, y: int, visited: set[tuple[int, int]]
     ) -> list[tuple[int, int]]:
-
+        """Return in-bounds, unvisited neighbours of ``(x, y)``."""
         neighbors: list[tuple[int, int]] = []
         for direction, (dx, dy) in MOVE_OFFSETS.items():
             nx, ny = x + dx, y + dy
@@ -287,6 +287,7 @@ class MazeGenerator:
     def get_reachable_cells(
         self, start_cell: tuple[int, int]
     ) -> set[tuple[int, int]]:
+        """Return every non-obstacle cell reachable from *start_cell*."""
         reachable: set[tuple[int, int]] = {start_cell}
         queue: deque[tuple[int, int]] = deque([start_cell])
         while queue:
@@ -305,6 +306,7 @@ class MazeGenerator:
         return reachable
 
     def ensure_full_connectivity(self) -> None:
+        """Open walls until every non-obstacle cell is reachable."""
         all_cells = {
             (x, y)
             for y in range(self.height)
@@ -336,6 +338,7 @@ class MazeGenerator:
                         break
 
     def generate_perfect_base(self) -> None:
+        """Carve a perfect maze (a single path between any two cells)."""
         self.generate_backtracker()
 
     def generate(self) -> None:
@@ -460,6 +463,7 @@ class MazeGenerator:
 
         # Calculate current loops using the same formula as analyzer
         def count_loops() -> int:
+            """Count independent cycles reachable from the entry."""
             reachable = self.get_reachable_cells(self.config.entry)
             open_passages = 0
             for x, y in reachable:

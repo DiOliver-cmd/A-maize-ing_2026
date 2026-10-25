@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate a maze from a configuration file, write it and display it."""
 
+import os
 import random
 import sys
 from dataclasses import replace
@@ -35,6 +36,35 @@ def generate_maze(config: MazeConfig) -> tuple[MazeGenerator, str]:
     path = generator.shortest_path()
     generator.write_output(config.output_file, path)
     return generator, path
+
+
+def run_graphical(config: MazeConfig) -> bool:
+    """Open the interactive MLX window when MLX and a display are available.
+
+    Args:
+        config (MazeConfig): The validated configuration.
+
+    Returns:
+        bool: True if the graphical view was used, False to fall back to
+            the terminal renderer.
+    """
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        return False
+    try:
+        from mazegen.renderer_mlx import MLX_AVAILABLE, MazeWindow
+    except ImportError:
+        return False
+    if not MLX_AVAILABLE:
+        return False
+
+    generator, path = generate_maze(config)
+    try:
+        MazeWindow(config, generator, path).run()
+    except Exception as error:      # keep the program usable without X11
+        print(f"MLX renderer unavailable: {error}")
+        print("Falling back to the terminal renderer.")
+        return False
+    return True
 
 
 def interact(config: MazeConfig) -> None:
@@ -85,7 +115,8 @@ def main(argv: list[str]) -> int:
 
     try:
         config = parse_config(argv[0])
-        interact(config)
+        if not run_graphical(config):
+            interact(config)
     except OSError as error:
         print(f"Error: {error.filename}: {error.strerror}.")
         return 1
