@@ -5,7 +5,7 @@ PYTEST = $(VENV)/bin/pytest
 FLAKE8 = $(VENV)/bin/flake8
 MYPY = $(VENV)/bin/mypy
 
-.PHONY: install test run debug clean lint lint-strict install-mlx
+.PHONY: install test run debug clean lint lint-strict install-mlx build
 
 # Regra para criar o ambiente virtual
 $(VENV):
@@ -30,6 +30,10 @@ run: $(VENV)
 
 debug: $(VENV)
 	$(PYTHON) -m pdb a_maze_ing.py config.txt
+
+# Gera o pacote mazegen-*.whl na raiz do repositório
+build: $(VENV)
+		$(PYTHON) -m build --wheel --outdir .
 
 # Limpeza de caches e arquivos temporários (recursivo em todos os diretórios)
 clean:
